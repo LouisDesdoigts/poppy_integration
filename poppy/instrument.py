@@ -138,7 +138,7 @@ class Instrument(object):
     def calc_psf(self, outfile=None, source=None, nlambda=None, monochromatic=None,
                  fov_arcsec=None, fov_pixels=None, oversample=None, detector_oversample=None, fft_oversample=None,
                  overwrite=True, display=False, save_intermediates=False, return_intermediates=False,
-                 normalize='first'):
+                 normalize='first', return_all=False):
         """ Compute a PSF.
         The result can either be written to disk (set outfile="filename") or else will be returned as
         a FITS HDUlist object.
@@ -261,6 +261,7 @@ class Instrument(object):
                                                fft_oversample=fft_oversample, detector_oversample=detector_oversample,
                                                options=local_options)
         self._check_for_aliasing(wavelens)
+        
         # and use it to compute the PSF (the real work happens here, in code in poppy.py)
         result = self.optsys.calc_psf(wavelens, weights, display_intermediates=display, display=display,
                                       save_intermediates=save_intermediates, return_intermediates=return_intermediates,
@@ -268,13 +269,28 @@ class Instrument(object):
 
         if return_intermediates:  # this implies we got handed back a tuple, so split it apart
             result, intermediates = result
+            
+        
+        from copy import deepcopy
+        dlux_dict = deepcopy(local_options)
+        dlux_dict['result0'] = deepcopy(result)
+        dlux_dict['fov_pixels'] = fov_pixels
+        dlux_dict['fft_oversample'] = fft_oversample
+        dlux_dict['wavelens'] = wavelens
+        dlux_dict['weights'] = weights
 
         self._apply_jitter(result,
                            local_options)  # will immediately return if there is no jitter parameter in local_options
+        
+        # Jittered PSF
+        dlux_dict['result1'] = deepcopy(result)
 
         self._get_fits_header(result, local_options)
 
         self._calc_psf_format_output(result, local_options)
+        
+        # Distorted PSF
+        dlux_dict['result2'] = deepcopy(result)
 
         if display:
             f = plt.gcf()
@@ -294,9 +310,15 @@ class Instrument(object):
             poppy_core._log.info("Saved result to " + outfile)
 
         if return_intermediates:
-            return result, intermediates
+            if return_all:
+                return result, intermediates, dlux_dict
+            else:
+                return result, intermediates
         else:
-            return result
+            if return_all:
+                return result, dlux_dict
+            else:
+                return result
 
     def calc_datacube(self, wavelengths, *args, **kwargs):
         """Calculate a spectral datacube of PSFs

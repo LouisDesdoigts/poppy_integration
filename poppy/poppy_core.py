@@ -31,6 +31,8 @@ __all__ = ['Wavefront', 'OpticalSystem', 'CompoundOpticalSystem',
            'OpticalElement', 'ArrayOpticalElement', 'FITSOpticalElement', 'Rotation', 'Detector']
 
 
+import pickle as p
+
 # internal constants for types of plane
 class PlaneType(enum.Enum):
     unspecified = 0
@@ -1736,6 +1738,9 @@ class BaseOpticalSystem(ABC):
 
         if self.verbose:
             _log.info("PSF Calculation completed.")
+
+        p.dump(outfits, open("/Users/louis/Code/PhD/dLux/sandbox/JWST/fits_poppy.p", 'wb'))
+        p.dump(outfits[0].data, open("/Users/louis/Code/PhD/dLux/sandbox/JWST/psf_poppy.p", 'wb'))
 
         if return_intermediates | return_final:
             return outfits, intermediate_wfs
